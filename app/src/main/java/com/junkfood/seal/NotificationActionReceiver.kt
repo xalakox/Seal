@@ -22,12 +22,14 @@ class NotificationActionReceiver : BroadcastReceiver(), KoinComponent {
 
         const val ACTION_CANCEL_TASK = 0
         const val ACTION_ERROR_REPORT = 1
+        const val ACTION_COPY_LINKSHARE_URL = 2
 
         const val ACTION_KEY = PACKAGE_NAME_PREFIX + "action"
         const val TASK_ID_KEY = PACKAGE_NAME_PREFIX + "taskId"
 
         const val NOTIFICATION_ID_KEY = PACKAGE_NAME_PREFIX + "notificationId"
         const val ERROR_REPORT_KEY = PACKAGE_NAME_PREFIX + "error_report"
+        const val LINKSHARE_URL_KEY = PACKAGE_NAME_PREFIX + "linkshare_url"
     }
 
     override fun onReceive(context: Context?, intent: Intent?) {
@@ -45,7 +47,18 @@ class NotificationActionReceiver : BroadcastReceiver(), KoinComponent {
                 val errorReport = intent.getStringExtra(ERROR_REPORT_KEY)
                 if (!errorReport.isNullOrEmpty()) copyErrorReport(errorReport, notificationId)
             }
+
+            ACTION_COPY_LINKSHARE_URL -> {
+                val shareUrl = intent.getStringExtra(LINKSHARE_URL_KEY)
+                if (!shareUrl.isNullOrEmpty()) copyLinkShareUrl(shareUrl, notificationId)
+            }
         }
+    }
+
+    private fun copyLinkShareUrl(shareUrl: String, notificationId: Int) {
+        App.clipboard.setPrimaryClip(ClipData.newPlainText("LinkShare URL", shareUrl))
+        context.let { ToastUtil.makeToastSuspend(it.getString(R.string.linkshare_link_copied)) }
+        NotificationUtil.cancelNotification(notificationId)
     }
 
     private fun cancelTask(taskId: String?, notificationId: Int) {

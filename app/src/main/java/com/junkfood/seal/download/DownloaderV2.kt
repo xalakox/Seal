@@ -21,6 +21,7 @@ import com.junkfood.seal.download.Task.RestartableAction.FetchInfo
 import com.junkfood.seal.download.Task.TypeInfo
 import com.junkfood.seal.util.DownloadUtil
 import com.junkfood.seal.util.FileUtil
+import com.junkfood.seal.util.LinkShareUtil
 import com.junkfood.seal.util.NotificationUtil
 import com.junkfood.seal.util.PreferenceUtil
 import com.junkfood.seal.util.VideoInfo
@@ -309,14 +310,15 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                         },
                     )
                     .onSuccess { pathList ->
-                        downloadState = Completed(pathList.firstOrNull())
+                        val downloadedPath = pathList.firstOrNull()
+                        downloadState = Completed(downloadedPath)
 
                         val text =
                             appContext.getString(
                                 if (pathList.isEmpty()) R.string.status_completed
                                 else R.string.download_finish_notification
                             )
-                        FileUtil.createIntentForOpeningFile(pathList.firstOrNull()).run {
+                        FileUtil.createIntentForOpeningFile(downloadedPath).run {
                             NotificationUtil.finishNotification(
                                 notificationId,
                                 title = viewState.title,
@@ -331,6 +333,18 @@ class DownloaderV2Impl(private val appContext: Context) : DownloaderV2, KoinComp
                                         )
                                     else null,
                             )
+                        }
+
+                        if (!downloadedPath.isNullOrBlank() && LinkShareUtil.shouldAutoUpload()) {
+                            scope.launch(Dispatchers.IO) {
+                                LinkShareUtil.uploadAndNotify(
+                                    context = appContext,
+                                    filePath = downloadedPath,
+                                    title = viewState.title,
+                                    sourceUrl = url,
+                                    notificationId = notificationId,
+                                )
+                            }
                         }
                     }
                     .onFailure { throwable ->

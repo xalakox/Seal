@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.automirrored.outlined.TextSnippet
 import androidx.compose.material.icons.outlined.AudioFile
 import androidx.compose.material.icons.outlined.Cancel
+import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.ErrorOutline
@@ -69,6 +70,7 @@ import com.junkfood.seal.ui.page.downloadv2.configure.PreferencesMock
 import com.junkfood.seal.ui.theme.ErrorTonalPalettes
 import com.junkfood.seal.ui.theme.SealTheme
 import com.junkfood.seal.util.Format
+import com.junkfood.seal.util.LinkShareUtil
 import com.junkfood.seal.util.toBitrateText
 import com.junkfood.seal.util.toDurationText
 import com.junkfood.seal.util.toFileSizeText
@@ -84,6 +86,18 @@ private fun ShareButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
         contentColor = LocalFixedColorRoles.current.onSecondaryFixedVariant,
         imageVector = Icons.Rounded.Share,
         text = stringResource(R.string.share),
+        onClick = onClick,
+    )
+}
+
+@Composable
+private fun LinkShareButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
+    ActionSheetPrimaryButton(
+        modifier = modifier,
+        containerColor = LocalFixedColorRoles.current.tertiaryFixed,
+        contentColor = LocalFixedColorRoles.current.onTertiaryFixedVariant,
+        imageVector = Icons.Outlined.CloudUpload,
+        text = stringResource(R.string.linkshare_action),
         onClick = onClick,
     )
 }
@@ -298,6 +312,21 @@ fun LazyListScope.ActionButtons(
             item(key = "ShareButton") {
                 ShareButton(modifier = Modifier.animateItem()) {
                     onActionPost(task, UiAction.ShareFile(downloadState.filePath))
+                }
+            }
+            if (!downloadState.filePath.isNullOrBlank() && LinkShareUtil.isConfigured()) {
+                item(key = "LinkShareButton") {
+                    LinkShareButton(modifier = Modifier.animateItem()) {
+                        onActionPost(
+                            task,
+                            UiAction.UploadToLinkShare(
+                                filePath = downloadState.filePath,
+                                title = viewState.title,
+                                sourceUrl = viewState.url,
+                            ),
+                        )
+                        onDismissRequest()
+                    }
                 }
             }
         }

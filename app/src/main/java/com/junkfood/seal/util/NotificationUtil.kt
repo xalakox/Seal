@@ -16,9 +16,11 @@ import androidx.core.app.NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE
 import com.junkfood.seal.App.Companion.context
 import com.junkfood.seal.NotificationActionReceiver
 import com.junkfood.seal.NotificationActionReceiver.Companion.ACTION_CANCEL_TASK
+import com.junkfood.seal.NotificationActionReceiver.Companion.ACTION_COPY_LINKSHARE_URL
 import com.junkfood.seal.NotificationActionReceiver.Companion.ACTION_ERROR_REPORT
 import com.junkfood.seal.NotificationActionReceiver.Companion.ACTION_KEY
 import com.junkfood.seal.NotificationActionReceiver.Companion.ERROR_REPORT_KEY
+import com.junkfood.seal.NotificationActionReceiver.Companion.LINKSHARE_URL_KEY
 import com.junkfood.seal.NotificationActionReceiver.Companion.NOTIFICATION_ID_KEY
 import com.junkfood.seal.NotificationActionReceiver.Companion.TASK_ID_KEY
 import com.junkfood.seal.R
@@ -247,6 +249,68 @@ object NotificationUtil {
                 R.drawable.outline_cancel_24,
                 context.getString(R.string.cancel),
                 pendingIntent,
+            )
+            .run { notificationManager.notify(notificationId, build()) }
+    }
+
+    fun notifyLinkShareProgress(
+        notificationId: Int,
+        title: String,
+        text: String,
+    ) {
+        if (!NOTIFICATION.getBoolean()) return
+        NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_stat_seal)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setProgress(PROGRESS_MAX, 0, true)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .run { notificationManager.notify(notificationId, build()) }
+    }
+
+    fun finishLinkShareNotification(
+        notificationId: Int,
+        title: String,
+        shareUrl: String,
+        shareIntent: PendingIntent,
+    ) {
+        notificationManager.cancel(notificationId)
+        if (!NOTIFICATION.getBoolean()) return
+
+        val copyIntent =
+            Intent(context.applicationContext, NotificationActionReceiver::class.java)
+                .putExtra(NOTIFICATION_ID_KEY, notificationId)
+                .putExtra(LINKSHARE_URL_KEY, shareUrl)
+                .putExtra(ACTION_KEY, ACTION_COPY_LINKSHARE_URL)
+
+        val copyPendingIntent =
+            PendingIntent.getBroadcast(
+                context.applicationContext,
+                notificationId,
+                copyIntent,
+                PendingIntent.FLAG_ONE_SHOT or
+                    PendingIntent.FLAG_IMMUTABLE or
+                    PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+
+        NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_stat_seal)
+            .setContentTitle(title)
+            .setContentText(shareUrl)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(shareUrl))
+            .setOngoing(false)
+            .setAutoCancel(true)
+            .setContentIntent(shareIntent)
+            .addAction(
+                R.drawable.outline_content_copy_24,
+                context.getString(R.string.copy_link),
+                copyPendingIntent,
+            )
+            .addAction(
+                R.drawable.ic_stat_seal,
+                context.getString(R.string.share),
+                shareIntent,
             )
             .run { notificationManager.notify(notificationId, build()) }
     }

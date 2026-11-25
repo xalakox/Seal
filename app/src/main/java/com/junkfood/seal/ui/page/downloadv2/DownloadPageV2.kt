@@ -118,6 +118,7 @@ import com.junkfood.seal.ui.svg.drawablevectors.download
 import com.junkfood.seal.ui.theme.SealTheme
 import com.junkfood.seal.util.DownloadUtil
 import com.junkfood.seal.util.FileUtil
+import com.junkfood.seal.util.LinkShareUtil
 import com.junkfood.seal.util.getErrorReport
 import com.junkfood.seal.util.makeToast
 import kotlinx.coroutines.CoroutineScope
@@ -176,6 +177,12 @@ sealed interface UiAction {
     data class OpenFile(val filePath: String?) : UiAction
 
     data class ShareFile(val filePath: String?) : UiAction
+
+    data class UploadToLinkShare(
+        val filePath: String,
+        val title: String?,
+        val sourceUrl: String?,
+    ) : UiAction
 
     data class OpenThumbnailURL(val url: String) : UiAction
 
@@ -245,6 +252,19 @@ fun DownloadPageV2(
                 val shareTitle = context.getString(R.string.share)
                 FileUtil.createIntentForSharingFile(action.filePath)?.let {
                     context.startActivity(Intent.createChooser(it, shareTitle))
+                }
+            }
+            is UiAction.UploadToLinkShare -> {
+                context.makeToast(R.string.linkshare_uploading)
+                scope.launch(Dispatchers.IO) {
+                    LinkShareUtil.uploadAndNotify(
+                        context = context.applicationContext,
+                        filePath = action.filePath,
+                        title = action.title,
+                        sourceUrl = action.sourceUrl,
+                        notificationId = task.id.hashCode(),
+                        openShareSheetImmediately = true,
+                    )
                 }
             }
         }

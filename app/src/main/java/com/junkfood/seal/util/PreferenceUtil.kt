@@ -185,6 +185,14 @@ const val TEMPLATE_SHORTCUTS = "template_shortcuts"
 const val TASK_LIST = "task_list"
 const val SAVED_LINKS = "saved_links"
 
+const val LINKSHARE_ENABLED = "linkshare_enabled"
+const val LINKSHARE_SERVER_URL = "linkshare_server_url"
+const val LINKSHARE_API_TOKEN = "linkshare_api_token"
+const val LINKSHARE_TTL_DAYS = "linkshare_ttl_days"
+const val LINKSHARE_AUTO_UPLOAD = "linkshare_auto_upload"
+const val LINKSHARE_AUTO_COPY = "linkshare_auto_copy"
+const val LINKSHARE_DELETE_LOCAL_AFTER_UPLOAD = "linkshare_delete_local_after_upload"
+
 val paletteStyles =
     listOf(
         PaletteStyle.TonalSpot,
@@ -218,6 +226,10 @@ private val BooleanPreferenceDefaults =
         NOTIFICATION to true,
         EMBED_METADATA to true,
         USE_CUSTOM_AUDIO_PRESET to false,
+        LINKSHARE_ENABLED to false,
+        LINKSHARE_AUTO_UPLOAD to true,
+        LINKSHARE_AUTO_COPY to true,
+        LINKSHARE_DELETE_LOCAL_AFTER_UPLOAD to false,
     )
 
 private val IntPreferenceDefaults =
@@ -237,6 +249,7 @@ private val IntPreferenceDefaults =
         DOWNLOAD_TYPE_INITIALIZATION to USE_PREVIOUS_SELECTION,
         YT_DLP_UPDATE_CHANNEL to YT_DLP_NIGHTLY,
         DOWNLOAD_TYPE to DownloadType.Video.ordinal,
+        LINKSHARE_TTL_DAYS to 30,
     )
 
 private val LongPreferenceDefaults = mapOf(YT_DLP_UPDATE_INTERVAL to DEFAULT_INTERVAL)

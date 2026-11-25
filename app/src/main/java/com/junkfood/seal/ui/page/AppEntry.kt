@@ -60,6 +60,7 @@ import com.junkfood.seal.ui.page.settings.format.DownloadFormatPreferences
 import com.junkfood.seal.ui.page.settings.format.SubtitlePreference
 import com.junkfood.seal.ui.page.settings.general.GeneralDownloadPreferences
 import com.junkfood.seal.ui.page.settings.interaction.InteractionPreferencePage
+import com.junkfood.seal.ui.page.settings.linkshare.LinkSharePreferences
 import com.junkfood.seal.ui.page.settings.network.CookieProfilePage
 import com.junkfood.seal.ui.page.settings.network.CookiesViewModel
 import com.junkfood.seal.ui.page.settings.network.NetworkPreferences
@@ -262,5 +263,6 @@ fun NavGraphBuilder.settingsGraph(
         animatedComposable(Route.TROUBLESHOOTING) {
             TroubleShootingPage(onNavigateTo = onNavigateTo, onBack = onNavigateBack)
         }
+        animatedComposable(Route.LINKSHARE) { LinkSharePreferences(onNavigateBack = onNavigateBack) }
     }
 }

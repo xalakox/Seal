@@ -18,6 +18,7 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.ModalBottomSheetState
 import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Link
@@ -29,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -51,7 +53,10 @@ import com.junkfood.seal.ui.component.OutlinedButtonWithIcon
 import com.junkfood.seal.ui.component.SealModalBottomSheetM2
 import com.junkfood.seal.ui.theme.SealTheme
 import com.junkfood.seal.util.FileUtil
+import com.junkfood.seal.util.LinkShareUtil
 import com.junkfood.seal.util.ToastUtil
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @Composable
 fun VideoDetailDrawer(
@@ -65,6 +70,8 @@ fun VideoDetailDrawer(
     val view = LocalView.current
     val context = LocalContext.current
     val hapticFeedback = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    val isLinkShareEnabled = remember { LinkShareUtil.isConfigured() }
     BackHandler(sheetState.targetValue == ModalBottomSheetValue.Expanded) { onDismissRequest() }
 
     val onReDownload =
@@ -107,6 +114,22 @@ fun VideoDetailDrawer(
                     context.startActivity(Intent.createChooser(this, shareTitle))
                 }
             },
+            showLinkShare = isFileAvailable && isLinkShareEnabled,
+            onUploadLinkShare = {
+                view.slightHapticFeedback()
+                onDismissRequest()
+                ToastUtil.makeToast(context.getString(R.string.linkshare_uploading))
+                scope.launch(Dispatchers.IO) {
+                    LinkShareUtil.uploadAndNotify(
+                        context = context.applicationContext,
+                        filePath = videoPath,
+                        title = videoTitle,
+                        sourceUrl = videoUrl,
+                        notificationId = videoPath.hashCode(),
+                        openShareSheetImmediately = true,
+                    )
+                }
+            },
         )
     }
 }
@@ -140,6 +163,8 @@ fun VideoDetailDrawerImpl(
     onDelete: () -> Unit = {},
     onOpenLink: () -> Unit = {},
     onShareFile: () -> Unit = {},
+    showLinkShare: Boolean = false,
+    onUploadLinkShare: () -> Unit = {},
 ) {
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
@@ -200,6 +225,14 @@ fun VideoDetailDrawerImpl(
                     text = stringResource(R.string.remove),
                 )
                 if (isFileAvailable) {
+                    if (showLinkShare) {
+                        FilledTonalButtonWithIcon(
+                            modifier = Modifier.padding(end = 12.dp),
+                            onClick = onUploadLinkShare,
+                            icon = Icons.Outlined.CloudUpload,
+                            text = stringResource(R.string.linkshare_action),
+                        )
+                    }
                     FilledTonalButtonWithIcon(
                         onClick = onShareFile,
                         icon = Icons.Outlined.Share,
