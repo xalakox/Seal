@@ -46,4 +46,20 @@ class LinkShareUtilTest {
         assertEquals("https://linkshare.example.com/media/AbCdEf1234.mp4", parsed.mediaUrl)
         assertEquals("Sample Clip", parsed.title)
     }
+
+    @Test
+    fun canonicalizeSourceUrl_normalizesInstagramTrackingParams() {
+        assertEquals(
+            "https://instagram.com/reel/DgIsIt8RMga",
+            LinkShareUtil.canonicalizeSourceUrl(
+                "https://www.instagram.com/reel/DgIsIt8RMga/?lqvp=OXRyZWZzNXIxMmVo"
+            ),
+        )
+        assertEquals(
+            "https://instagram.com/reel/DgIsIt8RMga",
+            LinkShareUtil.canonicalizeSourceUrl(
+                "https://instagram.com/reels/DgIsIt8RMga/?igsh=abc123"
+            ),
+        )
+    }
 }

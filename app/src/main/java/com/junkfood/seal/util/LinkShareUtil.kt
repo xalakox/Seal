@@ -10,13 +10,17 @@ import com.junkfood.seal.R
 import com.junkfood.seal.util.PreferenceUtil.getBoolean
 import com.junkfood.seal.util.PreferenceUtil.getInt
 import com.junkfood.seal.util.PreferenceUtil.getString
+import com.tencent.mmkv.MMKV
 import java.io.File
 import java.io.IOException
+import java.net.URLEncoder
+import java.time.Instant
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -25,6 +29,8 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.asRequestBody
 
 private const val TAG = "LinkShareUtil"
+private const val CACHE_KEY_URL_PREFIX = "linkshare_cache_url:"
+private const val CACHE_KEY_PATH_PREFIX = "linkshare_cache_path:"
 
 @Serializable
 data class LinkShareResponse(
@@ -38,6 +44,7 @@ data class LinkShareResponse(
 
 object LinkShareUtil {
     private val json = Json { ignoreUnknownKeys = true }
+    private val kv: MMKV by lazy { MMKV.defaultMMKV() }
 
     private val client: OkHttpClient by lazy {
         OkHttpClient.Builder()
@@ -55,8 +62,61 @@ object LinkShareUtil {
         return trimmed
     }
 
+    fun canonicalizeSourceUrl(rawUrl: String?): String? {
+        val cleaned = rawUrl?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        val withoutHash = cleaned.substringBefore("#")
+        val schemeSplit = withoutHash.split("://", limit = 2)
+        if (schemeSplit.size != 2) return cleaned
+        val scheme = schemeSplit[0].lowercase()
+        if (scheme != "http" && scheme != "https") return cleaned
+        val rest = schemeSplit[1]
+        val hostPart = rest.substringBefore("/").substringBefore("?").lowercase().removePrefix("www.")
+        val afterHost = rest.substringAfter("/", "")
+        val pathPart = "/" + afterHost.substringBefore("?").trimEnd('/')
+        val igHosts = setOf("instagram.com", "m.instagram.com", "ddinstagram.com", "instagr.am")
+        if (hostPart in igHosts) {
+            val segments = pathPart.split("/").filter { it.isNotEmpty() }
+            if (segments.size >= 2 && segments[0] in setOf("reel", "reels", "p", "tv")) {
+                val kind = if (segments[0] == "reels") "reel" else segments[0]
+                return "https://instagram.com/$kind/${segments[1]}"
+            }
+        }
+        return "$scheme://$hostPart$pathPart"
+    }
+
     fun parseUploadResponse(body: String): LinkShareResponse =
         json.decodeFromString(LinkShareResponse.serializer(), body)
+
+    fun isNotExpired(expiresAt: String?, nowEpochMillis: Long = System.currentTimeMillis()): Boolean {
+        if (expiresAt.isNullOrBlank()) return true
+        return runCatching { Instant.parse(expiresAt).toEpochMilli() > nowEpochMillis + 60_000L }
+            .getOrDefault(true)
+    }
+
+    private fun cacheKeys(sourceUrl: String?, filePath: String?): List<String> = buildList {
+        canonicalizeSourceUrl(sourceUrl)?.let { add(CACHE_KEY_URL_PREFIX + it) }
+        sourceUrl?.trim()?.takeIf { it.isNotEmpty() }?.let { add(CACHE_KEY_URL_PREFIX + it) }
+        filePath?.trim()?.takeIf { it.isNotEmpty() }?.let { add(CACHE_KEY_PATH_PREFIX + it) }
+    }
+
+    fun getCachedShare(sourceUrl: String?, filePath: String?): LinkShareResponse? {
+        for (key in cacheKeys(sourceUrl, filePath)) {
+            val raw = kv.decodeString(key) ?: continue
+            val parsed = runCatching { parseUploadResponse(raw) }.getOrNull() ?: continue
+            if (isNotExpired(parsed.expiresAt)) {
+                return parsed
+            }
+            kv.removeValueForKey(key)
+        }
+        return null
+    }
+
+    fun saveCachedShare(sourceUrl: String?, filePath: String?, response: LinkShareResponse) {
+        val encoded = runCatching { json.encodeToString(response) }.getOrNull() ?: return
+        for (key in cacheKeys(sourceUrl, filePath)) {
+            kv.encode(key, encoded)
+        }
+    }
 
     fun isConfigured(): Boolean {
         if (!LINKSHARE_ENABLED.getBoolean()) return false
@@ -110,6 +170,53 @@ object LinkShareUtil {
                     }
                 }
             }
+        }
+
+    suspend fun lookupExistingBySourceUrl(sourceUrl: String?): LinkShareResponse? =
+        withContext(Dispatchers.IO) {
+            val cleaned = sourceUrl?.trim()?.takeIf { it.isNotEmpty() } ?: return@withContext null
+            val baseUrl = normalizeServerUrl(LINKSHARE_SERVER_URL.getString()) ?: return@withContext null
+            val token = LINKSHARE_API_TOKEN.getString().trim()
+            if (token.isEmpty()) return@withContext null
+
+            runCatching {
+                    val encoded = URLEncoder.encode(cleaned, "UTF-8")
+                    val request =
+                        Request.Builder()
+                            .url("$baseUrl/api/shares/lookup?source_url=$encoded")
+                            .header("Authorization", "Bearer $token")
+                            .get()
+                            .build()
+                    client.newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) return@use null
+                        val body = response.body?.string().orEmpty()
+                        if (body.isBlank()) return@use null
+                        parseUploadResponse(body)
+                    }
+                }
+                .getOrNull()
+        }
+
+    suspend fun verifyShareStillActive(shareId: String): LinkShareResponse? =
+        withContext(Dispatchers.IO) {
+            val baseUrl = normalizeServerUrl(LINKSHARE_SERVER_URL.getString()) ?: return@withContext null
+            val token = LINKSHARE_API_TOKEN.getString().trim()
+            if (token.isEmpty()) return@withContext null
+            runCatching {
+                    val request =
+                        Request.Builder()
+                            .url("$baseUrl/api/shares/$shareId")
+                            .header("Authorization", "Bearer $token")
+                            .get()
+                            .build()
+                    client.newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) return@use null
+                        val body = response.body?.string().orEmpty()
+                        if (body.isBlank()) return@use null
+                        parseUploadResponse(body)
+                    }
+                }
+                .getOrNull()
         }
 
     suspend fun uploadFile(
@@ -175,31 +282,66 @@ object LinkShareUtil {
             }
         }
 
+    private suspend fun findExistingShare(
+        sourceUrl: String?,
+        filePath: String?,
+    ): LinkShareResponse? {
+        val cached = getCachedShare(sourceUrl, filePath)
+        if (cached != null) {
+            val verified = verifyShareStillActive(cached.id)
+            if (verified != null) {
+                saveCachedShare(sourceUrl, filePath, verified)
+                return verified
+            }
+        }
+        val fromServer = lookupExistingBySourceUrl(sourceUrl)
+        if (fromServer != null) {
+            saveCachedShare(sourceUrl, filePath, fromServer)
+            return fromServer
+        }
+        return null
+    }
+
     suspend fun uploadAndNotify(
         context: Context,
-        filePath: String,
+        filePath: String?,
         title: String?,
         sourceUrl: String?,
         notificationId: Int,
         openShareSheetImmediately: Boolean = false,
     ): Result<LinkShareResponse> {
         val displayTitle =
-            title?.takeIf { it.isNotBlank() } ?: File(filePath).nameWithoutExtension.ifBlank {
-                context.getString(R.string.linkshare)
-            }
+            title?.takeIf { it.isNotBlank() }
+                ?: filePath?.let { File(it).nameWithoutExtension.takeIf { n -> n.isNotBlank() } }
+                ?: context.getString(R.string.linkshare)
         val uploadNotificationId = notificationId xor 0x5A5A
 
-        NotificationUtil.notifyLinkShareProgress(
-            notificationId = uploadNotificationId,
-            title = displayTitle,
-            text = context.getString(R.string.linkshare_uploading),
-        )
-
-        val result = uploadFile(filePath = filePath, title = displayTitle, sourceUrl = sourceUrl)
+        // 1. Reuse existing active LinkShare link if already uploaded (no re-upload!)
+        val existing = findExistingShare(sourceUrl = sourceUrl, filePath = filePath)
+        val result: Result<LinkShareResponse> =
+            if (existing != null) {
+                Log.d(TAG, "Reusing existing LinkShare URL: ${existing.shareUrl}")
+                Result.success(existing)
+            } else if (filePath.isNullOrBlank() || !File(filePath).exists()) {
+                Result.failure(IOException("No active LinkShare link found and local file is missing"))
+            } else {
+                NotificationUtil.notifyLinkShareProgress(
+                    notificationId = uploadNotificationId,
+                    title = displayTitle,
+                    text = context.getString(R.string.linkshare_uploading),
+                )
+                uploadFile(filePath = filePath, title = displayTitle, sourceUrl = sourceUrl)
+                    .onSuccess { created ->
+                        saveCachedShare(sourceUrl, filePath, created)
+                        if (LINKSHARE_DELETE_LOCAL_AFTER_UPLOAD.getBoolean()) {
+                            runCatching { File(filePath).delete() }
+                        }
+                    }
+            }
 
         result
             .onSuccess { share ->
-                Log.d(TAG, "Uploaded to LinkShare: ${share.shareUrl}")
+                Log.d(TAG, "LinkShare URL ready: ${share.shareUrl}")
 
                 if (LINKSHARE_AUTO_COPY.getBoolean()) {
                     withContext(Dispatchers.Main) {
@@ -210,10 +352,6 @@ object LinkShareUtil {
                     ToastUtil.makeToastSuspend(context.getString(R.string.linkshare_link_copied))
                 } else {
                     ToastUtil.makeToastSuspend(context.getString(R.string.linkshare_upload_success))
-                }
-
-                if (LINKSHARE_DELETE_LOCAL_AFTER_UPLOAD.getBoolean()) {
-                    runCatching { File(filePath).delete() }
                 }
 
                 val shareIntent = createShareTextIntent(share.shareUrl, share.title ?: displayTitle)
@@ -239,7 +377,7 @@ object LinkShareUtil {
                 }
             }
             .onFailure { throwable ->
-                Log.e(TAG, "LinkShare upload failed", throwable)
+                Log.e(TAG, "LinkShare lookup/upload failed", throwable)
                 NotificationUtil.notifyError(
                     title = displayTitle,
                     textId = R.string.linkshare_upload_failed,

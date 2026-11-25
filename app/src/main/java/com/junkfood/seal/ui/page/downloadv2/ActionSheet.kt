@@ -314,7 +314,7 @@ fun LazyListScope.ActionButtons(
                     onActionPost(task, UiAction.ShareFile(downloadState.filePath))
                 }
             }
-            if (!downloadState.filePath.isNullOrBlank() && LinkShareUtil.isConfigured()) {
+            if (LinkShareUtil.isConfigured() && (!downloadState.filePath.isNullOrBlank() || viewState.url.isNotBlank())) {
                 item(key = "LinkShareButton") {
                     LinkShareButton(modifier = Modifier.animateItem()) {
                         onActionPost(
@@ -322,7 +322,7 @@ fun LazyListScope.ActionButtons(
                             UiAction.UploadToLinkShare(
                                 filePath = downloadState.filePath,
                                 title = viewState.title,
-                                sourceUrl = viewState.url,
+                                sourceUrl = viewState.url.ifBlank { task.url },
                             ),
                         )
                         onDismissRequest()

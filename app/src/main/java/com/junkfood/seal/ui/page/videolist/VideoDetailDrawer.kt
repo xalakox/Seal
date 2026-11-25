@@ -114,15 +114,14 @@ fun VideoDetailDrawer(
                     context.startActivity(Intent.createChooser(this, shareTitle))
                 }
             },
-            showLinkShare = isFileAvailable && isLinkShareEnabled,
+            showLinkShare = isLinkShareEnabled && (isFileAvailable || videoUrl.isNotBlank()),
             onUploadLinkShare = {
                 view.slightHapticFeedback()
                 onDismissRequest()
-                ToastUtil.makeToast(context.getString(R.string.linkshare_uploading))
                 scope.launch(Dispatchers.IO) {
                     LinkShareUtil.uploadAndNotify(
                         context = context.applicationContext,
-                        filePath = videoPath,
+                        filePath = videoPath.takeIf { isFileAvailable },
                         title = videoTitle,
                         sourceUrl = videoUrl,
                         notificationId = videoPath.hashCode(),
@@ -224,15 +223,15 @@ fun VideoDetailDrawerImpl(
                     icon = Icons.Outlined.Delete,
                     text = stringResource(R.string.remove),
                 )
+                if (showLinkShare) {
+                    FilledTonalButtonWithIcon(
+                        modifier = Modifier.padding(end = 12.dp),
+                        onClick = onUploadLinkShare,
+                        icon = Icons.Outlined.CloudUpload,
+                        text = stringResource(R.string.linkshare_action),
+                    )
+                }
                 if (isFileAvailable) {
-                    if (showLinkShare) {
-                        FilledTonalButtonWithIcon(
-                            modifier = Modifier.padding(end = 12.dp),
-                            onClick = onUploadLinkShare,
-                            icon = Icons.Outlined.CloudUpload,
-                            text = stringResource(R.string.linkshare_action),
-                        )
-                    }
                     FilledTonalButtonWithIcon(
                         onClick = onShareFile,
                         icon = Icons.Outlined.Share,

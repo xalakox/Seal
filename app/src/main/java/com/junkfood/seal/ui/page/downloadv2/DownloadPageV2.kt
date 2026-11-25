@@ -179,7 +179,7 @@ sealed interface UiAction {
     data class ShareFile(val filePath: String?) : UiAction
 
     data class UploadToLinkShare(
-        val filePath: String,
+        val filePath: String?,
         val title: String?,
         val sourceUrl: String?,
     ) : UiAction
@@ -255,7 +255,6 @@ fun DownloadPageV2(
                 }
             }
             is UiAction.UploadToLinkShare -> {
-                context.makeToast(R.string.linkshare_uploading)
                 scope.launch(Dispatchers.IO) {
                     LinkShareUtil.uploadAndNotify(
                         context = context.applicationContext,
