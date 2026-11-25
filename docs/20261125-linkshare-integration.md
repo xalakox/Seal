@@ -1,7 +1,7 @@
 # Seal LinkShare Integration
 
-Status: verified (on-device manual test pending)
-Last updated: 2026-11-25 04:29 UTC
+Status: verified
+Last updated: 2026-11-25 05:36 UTC
 
 ## Goal
 
@@ -35,6 +35,15 @@ Extend this fork of Seal (`xalakox/Seal`) so videos downloaded on Android (e.g.,
 - Reason: Document Seal LinkShare integration scope and hygiene constraints before editing Kotlin code.
 - Verification: Pending implementation.
 - Next: Implement preferences, upload utility, notification actions, downloader hook, and settings UI.
+
+### 2026-11-25 05:36 UTC — Antigravity
+
+- Changed: Built signed `arm64-v8a` release APK (`Seal-2.0.0-alpha.5-generic-release.apk`, 41 MB) using a local personal keystore outside git (`~/.android/seal-linkshare.jks`, referenced via gitignored `keystore.properties`).
+- Reason: Provide a ready-to-sideload signed release APK for Pixel after verifying the end-to-end download + auto-upload flow on physical hardware.
+- Verification:
+  - Installed debug build on physical XREAL X4000 (`R6LM47411863BB`), configured Settings -> LinkShare, verified **Test connection** returned HTTP `200 OK`, shared a test MP4 URL via `ACTION_SEND` into `QuickDownloadActivity`, confirmed on-device download + automatic `POST /api/shares/upload` (`201 Created`) + public watch page (`200 OK` with OpenGraph tags) + HTTP `206` Range playback + cleanup.
+  - Verified signed release APK with `apksigner verify` and confirmed clean install + launch (`com.junkfood.seal`) on XREAL X4000 with zero crashes.
+- Next: Sideload release APK onto Pixel and configure Settings -> LinkShare.
 
 ### 2026-11-25 04:29 UTC — Antigravity
 
