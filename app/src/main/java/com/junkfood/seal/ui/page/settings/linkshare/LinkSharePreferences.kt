@@ -11,7 +11,6 @@ import androidx.compose.material.icons.outlined.AutoMode
 import androidx.compose.material.icons.outlined.CloudDone
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Schedule
@@ -54,7 +53,6 @@ import com.junkfood.seal.ui.component.PreferenceSwitch
 import com.junkfood.seal.util.LINKSHARE_API_TOKEN
 import com.junkfood.seal.util.LINKSHARE_AUTO_COPY
 import com.junkfood.seal.util.LINKSHARE_AUTO_UPLOAD
-import com.junkfood.seal.util.LINKSHARE_DELETE_LOCAL_AFTER_UPLOAD
 import com.junkfood.seal.util.LINKSHARE_ENABLED
 import com.junkfood.seal.util.LINKSHARE_SERVER_URL
 import com.junkfood.seal.util.LINKSHARE_TTL_DAYS
@@ -82,7 +80,6 @@ fun LinkSharePreferences(onNavigateBack: () -> Unit) {
     var ttlDays by LINKSHARE_TTL_DAYS.intState
     var autoUpload by LINKSHARE_AUTO_UPLOAD.booleanState
     var autoCopy by LINKSHARE_AUTO_COPY.booleanState
-    var deleteLocal by LINKSHARE_DELETE_LOCAL_AFTER_UPLOAD.booleanState
 
     var showServerUrlDialog by remember { mutableStateOf(false) }
     var showTokenDialog by remember { mutableStateOf(false) }
@@ -205,20 +202,6 @@ fun LinkSharePreferences(onNavigateBack: () -> Unit) {
                     onClick = {
                         autoCopy = !autoCopy
                         LINKSHARE_AUTO_COPY.updateBoolean(autoCopy)
-                    },
-                )
-            }
-
-            item {
-                PreferenceSwitch(
-                    title = stringResource(R.string.linkshare_delete_local),
-                    description = stringResource(R.string.linkshare_delete_local_desc),
-                    icon = Icons.Outlined.DeleteOutline,
-                    enabled = enabled,
-                    isChecked = deleteLocal,
-                    onClick = {
-                        deleteLocal = !deleteLocal
-                        LINKSHARE_DELETE_LOCAL_AFTER_UPLOAD.updateBoolean(deleteLocal)
                     },
                 )
             }

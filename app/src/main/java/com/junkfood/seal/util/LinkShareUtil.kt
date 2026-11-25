@@ -333,9 +333,6 @@ object LinkShareUtil {
                 uploadFile(filePath = filePath, title = displayTitle, sourceUrl = sourceUrl)
                     .onSuccess { created ->
                         saveCachedShare(sourceUrl, filePath, created)
-                        if (LINKSHARE_DELETE_LOCAL_AFTER_UPLOAD.getBoolean()) {
-                            runCatching { File(filePath).delete() }
-                        }
                     }
             }
 

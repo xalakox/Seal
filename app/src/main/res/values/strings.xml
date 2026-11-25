@@ -463,8 +463,6 @@
     <string name="linkshare_auto_upload_desc">Automatically upload completed downloads and produce a shareable link</string>
     <string name="linkshare_auto_copy">Auto-copy share link</string>
     <string name="linkshare_auto_copy_desc">Copy the generated LinkShare URL to the clipboard when upload finishes</string>
-    <string name="linkshare_delete_local">Delete local file after upload</string>
-    <string name="linkshare_delete_local_desc">Remove the video from phone storage once uploaded to LinkShare</string>
     <string name="linkshare_hint">Downloads happen locally on your device and are uploaded over HTTPS to your own LinkShare server. Credentials stay on this device.</string>
     <string name="linkshare_uploading">Uploading to LinkShare…</string>
     <string name="linkshare_upload_success">Uploaded to LinkShare</string>

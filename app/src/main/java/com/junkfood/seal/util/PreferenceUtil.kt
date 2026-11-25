@@ -191,7 +191,6 @@ const val LINKSHARE_API_TOKEN = "linkshare_api_token"
 const val LINKSHARE_TTL_DAYS = "linkshare_ttl_days"
 const val LINKSHARE_AUTO_UPLOAD = "linkshare_auto_upload"
 const val LINKSHARE_AUTO_COPY = "linkshare_auto_copy"
-const val LINKSHARE_DELETE_LOCAL_AFTER_UPLOAD = "linkshare_delete_local_after_upload"
 
 val paletteStyles =
     listOf(
@@ -229,7 +228,6 @@ private val BooleanPreferenceDefaults =
         LINKSHARE_ENABLED to false,
         LINKSHARE_AUTO_UPLOAD to true,
         LINKSHARE_AUTO_COPY to true,
-        LINKSHARE_DELETE_LOCAL_AFTER_UPLOAD to false,
     )
 
 private val IntPreferenceDefaults =
